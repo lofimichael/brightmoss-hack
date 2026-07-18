@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>Checkpoint</string>
+    <key>CFBundleIdentifier</key>
+    <string>app.checkpoint.desktop</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>CHECKPOINT</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>CHECKPOINT uses your microphone only when you start a voice request.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>CHECKPOINT turns your voice request into text on this Mac.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>When you explicitly enable visual fallback, CHECKPOINT briefly reads the front window on this Mac to recognize text. Images are never saved.</string>
+    <key>LiveKitSandboxId</key>
+    <string>$(LIVEKIT_SANDBOX_ID)</string>
+    <key>LiveKitAgentName</key>
+    <string>$(LIVEKIT_AGENT_NAME)</string>
+</dict>
+</plist>
