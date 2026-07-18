@@ -1,12 +1,15 @@
+import asyncio
 import json
 import stat
+import threading
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from checkpoint_agent.freshness import UnavailableSavedURLFetcher
 from checkpoint_agent.planner import DeterministicPlanner
-from checkpoint_agent.retrieval import UnavailableSearchIndex
+from checkpoint_agent.retrieval import MossSessionSearchIndex, UnavailableSearchIndex
 from checkpoint_agent.server import create_app
 
 
@@ -167,3 +170,42 @@ def test_default_runtime_publishes_private_ephemeral_connection(
         )
 
     assert not connection_path.exists()
+
+
+def test_default_runtime_serves_local_memory_while_moss_warms(
+    tmp_path: Path, monkeypatch
+) -> None:
+    moss_started = threading.Event()
+
+    async def delayed_moss_initialization(_cls):
+        moss_started.set()
+        await asyncio.sleep(2.0)
+        return UnavailableSearchIndex("test warm-up complete")
+
+    monkeypatch.setattr(
+        MossSessionSearchIndex,
+        "from_environment",
+        classmethod(delayed_moss_initialization),
+    )
+    app = create_app(
+        database_path=str(tmp_path / "checkpoint.sqlite"),
+        planner=DeterministicPlanner(),
+        fetcher=UnavailableSavedURLFetcher(),
+        bearer_token=None,
+    )
+
+    started_at = time.monotonic()
+    with TestClient(app) as client:
+        startup_duration = time.monotonic() - started_at
+        assert moss_started.wait(timeout=0.5)
+        assert client.get("/health").json()["search"] == "sqlite-substring"
+
+        saved = client.post("/checkpoints", json=CHECKPOINT).json()
+        found = client.post(
+            "/turn", json={"text": "find the token endpoint", "modality": "typed"}
+        ).json()
+        assert found["checkpoint"]["id"] == saved["id"]
+
+    # A remote provider can be slow or unavailable without delaying local
+    # readiness. This deliberately leaves generous headroom for loaded CI.
+    assert startup_duration < 1.0
