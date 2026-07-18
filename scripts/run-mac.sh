@@ -210,7 +210,10 @@ app_bundle="$("$script_dir/build-mac-app.sh")"
 # Launch Services establishes the .app identity that macOS privacy controls
 # require. Executing Contents/MacOS/Checkpoint directly makes Speech TCC treat
 # it as a bare tool and terminate it even though the bundle plist is present.
-open -n -W --stdout /dev/stdout --stderr /dev/stderr "$app_bundle" &
+# Launch Services rejects /dev/stdout and /dev/stderr as app redirection
+# targets with error -10810 on current macOS. The helper already writes its
+# diagnostics to a private log, so let the app inherit normal GUI logging.
+open -n -W "$app_bundle" &
 checkpoint_app_pid=$!
 set +e
 wait "$checkpoint_app_pid"

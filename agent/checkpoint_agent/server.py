@@ -335,30 +335,69 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
-        if runtime.initialize_moss:
+        async def warm_optional_moss(
+            expected_local_orchestrator: RequestOrchestrator,
+        ) -> None:
             try:
                 active_index = await asyncio.wait_for(
                     MossSessionSearchIndex.from_environment(), timeout=10.0
                 )
             except TimeoutError:
                 active_index = UnavailableSearchIndex("Moss initialization timed out")
-            runtime.orchestrator = RequestOrchestrator(
+            except Exception as error:
+                active_index = UnavailableSearchIndex(
+                    f"Moss initialization failed: {type(error).__name__}"
+                )
+
+            candidate = RequestOrchestrator(
                 repository,
                 active_index,
-                freshness,
-                planner=active_planner,
-                proposals=runtime.orchestrator.proposals,
+                expected_local_orchestrator.freshness,
+                planner=expected_local_orchestrator.planner,
+                proposals=expected_local_orchestrator.proposals,
             )
-            runtime.graph.index = active_index
-        await runtime.orchestrator.rebuild_index()
+            try:
+                await candidate.rebuild_index()
+            except Exception:
+                # A remote index failure must not escape the optional startup
+                # task or interfere with loopback helper shutdown.
+                return
+
+            # Provider configuration can replace the orchestrator while the
+            # startup index is warming. Never overwrite that newer choice.
+            if runtime.orchestrator is expected_local_orchestrator:
+                candidate.freshness = expected_local_orchestrator.freshness
+                candidate.planner = expected_local_orchestrator.planner
+                runtime.orchestrator = candidate
+                runtime.graph.index = active_index
+
+        moss_warmup: asyncio.Task[None] | None = None
+        if runtime.initialize_moss:
+            # Local SQLite retrieval is authoritative and ready immediately.
+            # Optional Moss initialization and graph indexing must never delay
+            # the private loopback helper from accepting requests.
+            moss_warmup = asyncio.create_task(
+                warm_optional_moss(runtime.orchestrator),
+                name="checkpoint-moss-warmup",
+            )
+        else:
+            await runtime.orchestrator.rebuild_index()
         if runtime.connection_file and runtime.bearer_token:
             _publish_connection(
                 runtime.connection_file, settings.port, runtime.bearer_token
             )
-        yield
-        if runtime.connection_file and runtime.bearer_token:
-            _remove_own_connection(runtime.connection_file, runtime.bearer_token)
-        repository.close()
+        try:
+            yield
+        finally:
+            if moss_warmup is not None:
+                moss_warmup.cancel()
+                try:
+                    await moss_warmup
+                except asyncio.CancelledError:
+                    pass
+            if runtime.connection_file and runtime.bearer_token:
+                _remove_own_connection(runtime.connection_file, runtime.bearer_token)
+            repository.close()
 
     application = FastAPI(
         title="CHECKPOINT local helper",
