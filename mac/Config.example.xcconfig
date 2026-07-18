@@ -1,0 +1,4 @@
+// Development-only, nonsecret LiveKit frontend configuration.
+// SwiftPM development runs should export the same names in the environment.
+LIVEKIT_SANDBOX_ID = your-livekit-sandbox-id
+LIVEKIT_AGENT_NAME = checkpoint

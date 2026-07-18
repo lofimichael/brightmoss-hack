@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "checkpoint-agent"
+version = "0.1.0"
+description = "Local control helper for CHECKPOINT"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "httpx~=0.28.0",
+  "mcp>=1.20,<2",
+  "pydantic~=2.12.0",
+  "python-dotenv~=1.2.0",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+moss = ["moss~=1.7.1"]
+openai = ["openai~=2.46.0"]
+voice = [
+  "livekit-agents==1.6.6",
+]
+providers = [
+  "livekit-agents==1.6.6",
+  "moss~=1.7.1",
+  "openai~=2.46.0",
+]
+test = [
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.24,<1",
+  "ruff>=0.15,<1",
+]
+
+[project.scripts]
+checkpoint-agent = "checkpoint_agent.server:main"
+checkpoint-voice = "checkpoint_agent.voice_agent:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["checkpoint_agent"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -1,0 +1,35 @@
+# Provider credentials
+.env
+.env.local
+
+# CHECKPOINT local state
+.checkpoint/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# Python
+agent/.venv/
+agent/.pytest_cache/
+agent/.ruff_cache/
+agent/**/__pycache__/
+agent/**/*.py[cod]
+
+# Swift / Xcode
+mac/.build/
+mac/.swiftpm/
+mac/DerivedData/
+mac/*.xcodeproj/xcuserdata/
+mac/*.xcworkspace/xcuserdata/
+*.xcuserstate
+
+# Packaging and local output
+dist/
+build/
+*.dmg
+*.dmg.sha256
+
+# macOS
+.DS_Store
+
