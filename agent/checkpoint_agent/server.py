@@ -241,6 +241,10 @@ async def _configure_providers(
     runtime: _Runtime, request: ProviderConfigurationRequest
 ) -> ProviderCapabilityStatus:
     changed = request.model_fields_set
+    previous_moss_credentials = (
+        runtime.provider_memory.moss_project_id,
+        runtime.provider_memory.moss_project_key,
+    )
     runtime.provider_memory.merge(request)
     memory = runtime.provider_memory
 
@@ -265,7 +269,16 @@ async def _configure_providers(
             else DeterministicPlanner()
         )
 
-    if {"moss_project_id", "moss_project_key", "moss_credential"}.intersection(changed):
+    moss_fields_changed = {
+        "moss_project_id",
+        "moss_project_key",
+        "moss_credential",
+    }.intersection(changed)
+    moss_credentials_changed = previous_moss_credentials != (
+        memory.moss_project_id,
+        memory.moss_project_key,
+    )
+    if moss_fields_changed and moss_credentials_changed:
         if memory.moss_project_id and memory.moss_project_key:
             try:
                 active_index = await asyncio.wait_for(
