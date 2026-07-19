@@ -216,6 +216,40 @@ def test_single_moss_json_bundle_configures_both_required_values(
     assert calls == [(project_id, project_key)]
 
 
+def test_identical_moss_credentials_do_not_rebuild_the_index_twice(
+    tmp_path: Path, monkeypatch
+) -> None:
+    calls: list[tuple[str, str]] = []
+    sentinel = UnavailableSearchIndex("ready-test-index")
+    sentinel.available = True
+
+    async def fake_from_credentials(cls, supplied_id: str, supplied_key: str):
+        del cls
+        calls.append((supplied_id, supplied_key))
+        return sentinel
+
+    monkeypatch.setattr(
+        MossSessionSearchIndex,
+        "from_credentials",
+        classmethod(fake_from_credentials),
+    )
+    headers = {"Authorization": "Bearer loopback-token"}
+    payload = {
+        "moss_project_id": "stable-project",
+        "moss_project_key": "stable-key",
+    }
+    with TestClient(configured_app(tmp_path / "checkpoint.sqlite")) as client:
+        first = client.post("/providers/configure", headers=headers, json=payload)
+        second = client.post("/providers/configure", headers=headers, json=payload)
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert first.json()["moss"] == "ready"
+        assert second.json()["moss"] == "ready"
+
+    assert calls == [("stable-project", "stable-key")]
+
+
 async def test_moss_auto_enables_with_credentials_and_explicit_false_disables(
     monkeypatch,
 ) -> None:

@@ -37,6 +37,11 @@ forward_signal() {
   local exit_status="$2"
   trap - INT TERM HUP
   if [[ -n "$checkpoint_app_pid" ]] && kill -0 "$checkpoint_app_pid" 2>/dev/null; then
+    # `open -W` is only a wrapper; Launch Services reparents the real GUI app
+    # to launchd. Ask the bundled app to quit too so Ctrl-C cannot leave a
+    # stale CHECKPOINT instance connected to a helper that cleanup is stopping.
+    osascript -e 'tell application id "app.checkpoint.desktop" to quit' \
+      >/dev/null 2>&1 || true
     kill -s "$signal_name" "$checkpoint_app_pid" 2>/dev/null || true
   fi
   exit "$exit_status"
@@ -213,7 +218,8 @@ app_bundle="$("$script_dir/build-mac-app.sh")"
 # Launch Services rejects /dev/stdout and /dev/stderr as app redirection
 # targets with error -10810 on current macOS. The helper already writes its
 # diagnostics to a private log, so let the app inherit normal GUI logging.
-open -n -W "$app_bundle" &
+echo "CHECKPOINT is running. Quit the app or press Ctrl-C to stop private memory."
+open -W "$app_bundle" &
 checkpoint_app_pid=$!
 set +e
 wait "$checkpoint_app_pid"
